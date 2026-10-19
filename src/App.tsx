@@ -32,7 +32,6 @@ import {
 } from './lib/brain'
 import { startAnalyser, micLevel } from './lib/audio'
 import { probeCapabilities } from './lib/capabilities'
-import { env } from './config'
 
 /**
  * The conversation.
@@ -464,11 +463,6 @@ export default function App() {
     })
     const warming = warm().catch((err: Error) => s.setError(err.message))
 
-    if (!usingBridge && !env.anthropicKey) {
-      s.setError(
-        'No Anthropic API key — copy .env.example to .env.local and set VITE_ANTHROPIC_API_KEY.',
-      )
-    }
 
     // Pull the neural voice down during the boot sequence so the first
     // "Hey Atlas" isn't waiting on an 86MB download. Deliberately not awaited

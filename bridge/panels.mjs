@@ -1,4 +1,4 @@
-import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk'
+import { createToolServer, tool } from './tools.mjs'
 import { z } from 'zod'
 import { probeUrl } from './page.mjs'
 
@@ -98,7 +98,7 @@ EXAMPLES
 
 Search results:
 <div class="hud-rows">
-  <div class="hud-row"><span class="hud-idx">01</span><span class="hud-main"><span class="hud-label">Anthropic ships Claude Opus 5</span><span class="hud-sub">A step change on agentic coding</span></span><span class="hud-tag">reuters</span></div>
+  <div class="hud-row"><span class="hud-idx">01</span><span class="hud-main"><span class="hud-label">Atlas recebe nova integração OpenAI</span><span class="hud-sub">A step change on agentic coding</span></span><span class="hud-tag">reuters</span></div>
   <div class="hud-row"><span class="hud-idx">02</span><span class="hud-main"><span class="hud-label">OpenAI responds within the week</span></span><span class="hud-tag">verge</span></div>
 </div>
 
@@ -318,7 +318,7 @@ argument. You know those things. Overrule it whenever you have reason to.`
  * @param {(blade: object) => void} emitBlade - pushes a blade to the browser
  */
 export function displayServer(emit, emitBlade) {
-  return createSdkMcpServer({
+  return createToolServer({
     name: 'atlas',
     version: '1.0.0',
     instructions:

@@ -63,6 +63,7 @@ function run(name, command, args, colour, env) {
     env: { ...process.env, ...env },
     shell: false,
   })
+  child.on('error', (err) => { console.error(`${name}: ${err.message}`); shutdown(1) })
   child.stdout.on('data', (d) => process.stdout.write(label(d) + '\n'))
   child.stderr.on('data', (d) => process.stderr.write(label(d) + '\n'))
   child.on('exit', (code) => {
@@ -114,12 +115,12 @@ if (port) {
 vendorWasm()
 
 console.log('\nA.T.L.A.S. starting — the brain and the face.\n')
-run('bridge', 'node', ['bridge/server.mjs'], '36', bridgeEnv)
+run('bridge', process.execPath, ['bridge/server.mjs'], '36', bridgeEnv)
 // npm is a shell script on most systems; call the vite binary directly so we do
 // not need shell:true (which would break the argument handling above).
 run('face', process.execPath, ['node_modules/vite/bin/vite.js'], '35', {})
 
 console.log(
   '\nWhen it says the dev server is ready, open the URL it prints in Chrome,\n' +
-    'click INITIALISE, and say "Hey Atlas". Ctrl-C stops everything.\n',
+    'clique INICIAR ATLAS e diga "Ei Atlas". Ctrl-C stops everything.\n',
 )

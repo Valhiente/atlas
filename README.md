@@ -1,77 +1,128 @@
-# Atlas
+# Atlas · OpenAI
 
-Assistente pessoal de Carlos com interface holográfica, voz em português brasileiro,
-câmera, gestos e ferramentas MCP. Base completa copiada do Jarvis e adaptada;
-consulte [NOTICE.md](NOTICE.md) e [LICENSE](LICENSE).
+Assistente pessoal de Carlos com interface holográfica, voz em português,
+câmera, gestos e ferramentas. A inteligência usa **Codex app-server com login
+ChatGPT**, executado no seu computador. A API paga por chave não é usada.
+Acesso a modelos e limites dependem da sua conta e plano; ter Pro não elimina limites.
 
-## Executar
+## Instalar ou atualizar
 
-1. Instale Node.js 22.12 ou superior e Chrome/Edge.
-2. Instale e autentique o Claude Code no computador.
-3. Rode `npm ci`.
-4. Opcionalmente copie `.env.example` para `.env.local` e ajuste as variáveis.
-5. Rode `npm start` e abra `http://localhost:5173`.
-6. Clique em **INICIAR ATLAS**, permita o microfone e diga **Ei Atlas**.
+Requisitos: Node.js 22.12+ e Chrome/Edge em uma janela real.
 
-A assinatura e o acesso ao modelo são fornecidos pela sua conta Claude.
-Não há credenciais incluídas no projeto. `ATLAS_MODEL` permite escolher um modelo
-habilitado na sua conta; o valor herdado do projeto original precisa ser validado nela.
+Primeira instalação:
 
-## Recursos preservados
+```bash
+git clone https://github.com/Valhiente/atlas.git
+cd atlas
+npm ci
+npm run login
+npm start
+```
 
-- React, Three.js, shaders, reator, partículas e animação de inicialização.
-- Voz contínua, chamada pelo nome, interrupção e resposta em streaming.
-- Voz do navegador, ElevenLabs opcional e motor Kokoro opcional.
-- Painéis, artigos, galerias, vídeos, imagens em órbita e efeitos por comando.
-- Câmera: foto, sequência de quadros e buffer temporário de dez segundos.
-- Gestos MediaPipe e controle da interface com as mãos.
-- MCP configurado em `~/.claude.json`, mais ferramentas internas de interface e câmera.
-- Controle do Chrome pela extensão Claude, dependente do host nativo Unix original.
-- Sanitização HTML, restrições de origem, proteção contra SSRF e limite de mídia.
+Se já tem o projeto, dentro da pasta `atlas`:
 
-## Adaptações Atlas
+```bash
+git pull --ff-only
+npm ci
+npm run login
+npm start
+```
 
-- Reconhecimento `pt-BR`, vozes portuguesas e chamadas “Atlas”/“Ei Atlas”.
-- Personalidade Atlas e frases de atendimento em português.
-- Entrada por texto, exportação e limpeza do histórico visual local.
-- Servidor limitado a `127.0.0.1` por padrão.
-- Arquivo `.env.local` carregado também no servidor.
-- Inicialização do cliente direto de IA apenas quando ele é usado.
+No login, use sua conta ChatGPT. O Codex é instalado como dependência local;
+não é necessário instalar outro agente global. Para terminal remoto sem navegador,
+use `npm run login -- --device-auth` e siga as instruções oficiais apresentadas.
+Depois abra `http://localhost:5173`, clique **INICIAR ATLAS**, permita o microfone
+e diga **Ei Atlas** ou digite uma mensagem.
 
-O histórico salvo é o registro visual do navegador; não restaura a memória da IA
-após perda de conexão. Kokoro preserva as vozes inglesas originais, portanto use
-voz do sistema ou ElevenLabs para português. Porcupine está preservado da base,
-mas não está integrado ao fluxo ativo de reconhecimento.
+A sessão fica em `~/.atlas/codex`, separada de outros projetos. O servidor exige
+login do tipo ChatGPT e remove `OPENAI_API_KEY` de seu processo filho, evitando
+uma troca involuntária para cobrança por chave. Não copie tokens nem senhas
+para arquivos do projeto. As memórias desta conversa no ChatGPT não são importadas.
 
-## Comandos
+## Recursos
+
+- Interface React/Three.js, reator, partículas, shaders e áudios originais.
+- Voz `pt-BR`, chamada pelo nome, interrupção e respostas em streaming.
+- Entrada por texto e histórico visual local com exportação e limpeza.
+- Painéis e telas de artigos, imagens, galerias, vídeos e câmera.
+- Tema, reator, imagens em órbita e efeitos controlados por ferramentas.
+- MediaPipe para gestos; processamento de mãos no navegador.
+- Ferramentas `look`/`watch` enviam foto ou grade de quadros ao modelo somente
+  quando solicitadas. O buffer recente de dez segundos existe enquanto a câmera está aberta.
+- Voz do navegador como padrão; ElevenLabs opcional. Kokoro mantém vozes inglesas.
+
+O histórico local é visual e não restaura o contexto do modelo após reconexão.
+A memória do agente dura a conexão atual. Voz e câmera dependem de permissões,
+WebGL e suporte do dispositivo; build aprovado não comprova esses acessos.
+
+## Controle do Chrome/Edge
+
+Em outro terminal, dentro do projeto, execute:
+
+```bash
+npm run chrome
+```
+
+Isso abre um perfil exclusivo em `~/.atlas/browser`, com depuração limitada ao
+loopback. Faça login nos sites nesse perfil. Não usa extensões de outro provedor
+e não reaproveita automaticamente as abas e cookies do seu navegador pessoal.
+O CDP deve ficar apenas em `127.0.0.1`; não exponha a porta 9222 à rede.
+
+Por padrão: listar abas, navegar por páginas públicas, ler estrutura/texto,
+rolar e capturar tela. Para cliques, campos, teclas e abrir/fechar abas,
+inicie explicitamente `npm start -- --writes`. Revise as ações antes de habilitar.
+
+## MCP externo
+
+Servidores são opcionais e não são importados de outro agente.
+Crie `~/.atlas/mcp.json` com um objeto `mcpServers` (exemplo em
+`docs/mcp.example.json`). São aceitos stdio (`command`, `args`, `env`) e
+Streamable HTTP (`url`, `headers`). Credenciais ficam nesse arquivo local;
+não o envie ao GitHub. Servidores são processos/serviços escolhidos por você.
+O SDK MCP converte suas ferramentas para as chamadas do Codex. No modo restrito,
+só nomes com verbos de leitura são expostos; nomes com verbos de alteração são
+recusados. Esta heurística não substitui a revisão do servidor e suas permissões.
+OAuth de terceiros deve ser configurado no respectivo serviço; o Atlas não cria
+contas, credenciais ou conectores automaticamente.
+
+## Configuração e permissões
+
+Copie `.env.example` para `.env.local` apenas se precisar mudar os padrões.
+`ATLAS_MODEL` vazio usa o modelo padrão da sua conta. Voz do navegador não
+precisa de chave. ElevenLabs tem conta/cobrança própria.
+
+O processo Codex usa uma pasta de trabalho dedicada, sandbox de leitura e shell
+desativado; solicitações de comandos, edição e expansão de permissões são negadas.
+O modo `--writes` habilita somente as ferramentas externas do Atlas; não libera
+shell do Codex. Ferramentas de interface e câmera têm escopo próprio.
+O protocolo de ferramentas dinâmicas é experimental; Codex está fixado em
+`0.163.0` e deve ser validado antes de atualizar.
+
+Esta é uma aplicação **local**. Hospedar somente o frontend não hospeda o agente.
+Uma oferta comercial/hospedada exige rever autenticação e condições de uso;
+não exponha esta sessão pessoal como serviço público.
+
+## Comandos úteis
 
 | Comando | Função |
 |---|---|
-| `npm start` | Interface + servidor e preparação do WASM dos gestos |
-| `npm run bridge` | Apenas servidor |
-| `npm run dev` | Apenas interface; execute `npm start` uma vez para preparar gestos |
-| `npm start -- --writes` | Habilita ações externas e alterações |
-| `npm run setup` | Diagnóstico inicial |
+| `npm run login` | Login ChatGPT no Codex do Atlas |
+| `npm run logout` | Remove o login próprio do Atlas |
+| `npm run setup` | Verifica instalação e presença de autenticação |
+| `npm start` | Servidor, interface e arquivos WASM dos gestos |
+| `npm run chrome` | Abre perfil dedicado Chrome/Edge |
+| `npm start -- --writes` | Libera ferramentas externas de alteração |
+| `npm test` | Testes de protocolo, ferramentas e permissões |
 | `npm run lint` | Análise estática |
-| `npm run typecheck` | TypeScript |
-| `npm run build` | TypeScript + bundle de produção |
+| `npm run typecheck` | Verificação TypeScript |
+| `npm run build` | TypeScript e bundle de produção |
 
-Espaço inicia escuta; Escape retorna à espera; G alterna gestos; D mostra diagnóstico;
-T testa áudio; V alterna a voz. Ações ficam restritas por padrão. O modo com escrita
-herda o acesso às ferramentas configuradas: revise `decideTool()` antes de ativá-lo.
+Atalhos: Espaço para falar; Escape para espera; G para gestos; D para diagnóstico;
+T para testar voz; V para alternar voz instalada.
 
-## Estrutura
+## Origem e licença
 
-- `src/App.tsx`: fluxo da conversa e inicialização.
-- `src/lib/voice.ts` / `tts.ts`: audição e fala.
-- `src/scene`: interface 3D.
-- `src/ui`: painéis e controles.
-- `bridge/server.mjs`: Claude Agent SDK, HTTP, WebSocket e permissões.
-- `bridge/chrome.mjs`: extensão Claude no Chrome.
-- `bridge/vision.mjs`: câmera.
-- `bridge/net.mjs` / `page.mjs`: proxies e páginas.
-
-Publicar só o frontend não publica o servidor local. Uso no celular exige configuração
-de rede, HTTPS, origens e URLs; não é habilitado automaticamente.
-O modo `direct` embute chave no navegador e destina-se somente a experimentação local.
-A documentação integral da origem está em `docs/JARVIS-ORIGINAL.md`.
+Base visual e multimodal derivada de [Jarvis](https://github.com/Valhiente/jarvis).
+Copyright e licença MIT originais preservados em `LICENSE`, atribuição em
+`NOTICE.md` e créditos dos áudios em `public/audio/CREDITS.md`.
+A migração substitui integralmente o backend de inteligência anterior.
