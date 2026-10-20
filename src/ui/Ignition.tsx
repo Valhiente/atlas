@@ -47,8 +47,8 @@ export function Ignition({ onStart }: { onStart: () => void }) {
       */}
       <span className="ignition-ring" />
       <span className="ignition-label">
-        <span className="ignition-word">INICIAR ATLAS</span>
-        <span className="ignition-sub">clique ou bata palmas para iniciar</span>
+        <span className="ignition-word">CONVERSAR COM ATLAS</span>
+        <span className="ignition-sub">voz e texto, no seu ritmo</span>
       </span>
     </button>
   )

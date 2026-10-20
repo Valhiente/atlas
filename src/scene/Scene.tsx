@@ -119,7 +119,7 @@ function Rig() {
         scale: 1,
         intensity: 1,
         spin: 1,
-        style: STYLE_INDEX.ring,
+        style: STYLE_INDEX.sphere,
         visible: true,
       },
     }),
@@ -219,7 +219,7 @@ export function Scene() {
       <EffectComposer multisampling={0}>
         {/* Bloom is what turns additive lines into "hologram". */}
         <Bloom
-          intensity={1.15}
+          intensity={0.65}
           // A higher threshold keeps the mid-tones intact so the orb doesn't
           // flatten into a solid white disc.
           luminanceThreshold={0.22}

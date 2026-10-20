@@ -9,13 +9,13 @@ import { GestureGuide } from './GestureGuide'
 
 const statusText: Record<Phase, string> = {
   offline: 'DESLIGADO',
-  boot: 'INITIALISING',
+  boot: 'INICIANDO',
   dormant: 'EM ESPERA — DIGA “EI ATLAS”',
-  waking: 'ONLINE',
+  waking: 'PRONTO',
   listening: 'OUVINDO',
-  thinking: 'PROCESSING',
-  tooling: 'ACCESSING SISTEMAS',
-  speaking: 'RESPONDING',
+  thinking: 'PENSANDO',
+  tooling: 'CONSULTANDO',
+  speaking: 'RESPONDENDO',
 }
 
 function Corner({ at }: { at: 'tl' | 'tr' | 'bl' | 'br' }) {
@@ -190,8 +190,8 @@ export function Hud() {
       <header className="hud-top">
         {ui.chrome.brand && (
           <div className="brand">
-            <span className="brand-mark">A.T.L.A.S.</span>
-            <span className="brand-sub">Just A Rather Very Intelligent System</span>
+            <span className="brand-mark">Atlas</span>
+            <span className="brand-sub">Seu assistente pessoal</span>
           </div>
         )}
 
@@ -211,7 +211,7 @@ export function Hud() {
       {ui.chrome.systems && (
         <aside className="rail rail-left">
           <div className="rail-title">SISTEMAS</div>
-          {connected.length === 0 && <div className="rail-item dim">none linked</div>}
+          {connected.length === 0 && <div className="rail-item dim">nenhum conectado</div>}
           {connected.map((c) => (
             <div key={c} className="rail-item">
               <span className="tick" />
@@ -227,7 +227,7 @@ export function Hud() {
 
       {/* Right rail: live telemetry, mostly for flavour */}
       <aside className="rail rail-right">
-        <div className="rail-title">SIGNAL</div>
+        <div className="rail-title">ÁUDIO</div>
         <div className="meter">
           <div className="meter-fill" style={{ height: `${level * 100}%` }} />
         </div>
@@ -253,7 +253,7 @@ export function Hud() {
           >
             <span className="tool-kicker">
               <span className="spinner" />
-              accessing
+              consultando
             </span>
             <span className="tool-name">{activeTool.replace(/[_-]/g, ' ')}</span>
           </motion.div>
@@ -273,7 +273,7 @@ export function Hud() {
                 exit={{ opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 320, damping: 32 }}
               >
-                <span className="log-who">{t.role === 'user' ? 'YOU' : 'ATLAS'}</span>
+                <span className="log-who">{t.role === 'user' ? 'VOCÊ' : 'ATLAS'}</span>
                 {/* Only his half decodes. What the user said was never
                     transmitted from anywhere — dressing it up as machine
                     output would be a lie about where the words came from. */}
@@ -316,7 +316,7 @@ export function Hud() {
           {voice && (
             <>
               {' · '}
-              <kbd>V</kbd> voice: {voice.replace(/\(.*?\)/g, '').trim()}
+              <kbd>V</kbd> voz: {voice.replace(/\(.*?\)/g, '').trim()}
             </>
           )}
         </span>
@@ -332,7 +332,7 @@ export function Hud() {
       <Pointer />
       {(gestures || looking) && (
         <div className="hands-live">
-          {looking ? `LOOKING — ${looking.toUpperCase()}` : 'CAMERA ON · G TO STOP'}
+          {looking ? `LOOKING — ${looking.toUpperCase()}` : 'CÂMERA ATIVA · G PARA PARAR'}
         </div>
       )}
       <GestureGuide live={gestures} />
