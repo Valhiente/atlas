@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
+import { get } from 'node:http'
 import { readFile, mkdtemp, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -16,6 +17,20 @@ const codespace = 'atlas-connectivity-test'
 const cloudOrigin = 'https://' + codespace + '-' + facePort + '.app.github.dev'
 const bridgeBase = 'http://127.0.0.1:' + bridgePort
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
+
+// node:http preserves an explicit Host; fetch may replace this forbidden header.
+function requestWithHost(path, headers) {
+  return new Promise((resolve, reject) => {
+    const request = get(localOrigin + path, { headers }, response => {
+      let body = ''
+      response.setEncoding('utf8')
+      response.on('data', chunk => { body += chunk })
+      response.on('end', () => resolve({ status: response.statusCode, body }))
+    })
+    request.setTimeout(5000, () => request.destroy(new Error('HTTP timeout')))
+    request.on('error', reject)
+  })
+}
 
 function handshake(origin, url = 'ws://127.0.0.1:' + bridgePort) {
   return new Promise(resolve => {
@@ -141,11 +156,9 @@ test('inicialização real e conexões HTTP/WebSocket em ambiente Codespaces sim
   })
 
   await t.test('proxy Vite entrega health na mesma origem, inclusive com Host do Codespace', async () => {
-    const response = await fetch(localOrigin + '/atlas-bridge/health', {
-      headers: { Origin: cloudOrigin, Host: new URL(cloudOrigin).host },
-    })
+    const response = await requestWithHost('/atlas-bridge/health', { Origin: cloudOrigin, Host: new URL(cloudOrigin).host })
     assert.equal(response.status, 200)
-    assert.equal((await response.json()).provider, 'openai-codex')
+    assert.equal(JSON.parse(response.body).provider, 'openai-codex')
   })
   await t.test('proxy Vite abre WebSocket para a ponte preservando a origem', async () => {
     assert.equal(await handshake(cloudOrigin, localOrigin.replace('http:', 'ws:') + '/atlas-bridge'), 'open')
@@ -189,7 +202,7 @@ test('inicialização real e conexões HTTP/WebSocket em ambiente Codespaces sim
     }
   })
   await t.test('Vite aceita somente o Host remoto configurado', async () => {
-    const response = await fetch(localOrigin, { headers: { Host: 'another-codespace-5173.app.github.dev' } })
+    const response = await requestWithHost('/', { Host: 'another-codespace-5173.app.github.dev' })
     assert.equal(response.status, 403)
   })
 
