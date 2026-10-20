@@ -11,6 +11,7 @@
  */
 
 import { spawn } from 'node:child_process'
+import { getNetworkConfig } from './network.mjs'
 import process from 'node:process'
 import { cpSync, existsSync, mkdirSync } from 'node:fs'
 
@@ -93,24 +94,14 @@ function shutdown(code) {
 process.on('SIGINT', () => shutdown(0))
 process.on('SIGTERM', () => shutdown(0))
 
-/**
- * Tell the bridge which port the face will actually be on.
- *
- * The bridge only trusts WebSocket origins on localhost:5173-5199 and
- * 4173-4199, which is the right default — a socket that any local page can open
- * is a socket that drives every MCP server on the machine. But a launcher that
- * assigns a port outside that range produces the single most confusing failure
- * this project has: the interface loads, the reactor spins, the microphone
- * hears you, and the brain answers nothing, because the handshake is being 403'd
- * somewhere neither half reports. Passing the port through closes that gap
- * without widening what the bridge trusts by default.
- */
-const port = process.env.PORT
+const network = getNetworkConfig()
 const bridgeEnv = writes ? { ATLAS_ALLOW_WRITES: '1' } : {}
-if (port) {
-  bridgeEnv.ATLAS_ALLOWED_ORIGINS = `http://localhost:${port},http://127.0.0.1:${port}`
-  console.log(`  serving the face on port ${port}; the bridge will accept it.\n`)
-}
+bridgeEnv.ATLAS_ALLOWED_ORIGINS = [
+  process.env.ATLAS_ALLOWED_ORIGINS,
+  'http://localhost:' + network.facePort,
+  'http://127.0.0.1:' + network.facePort,
+  network.codespaceOrigin,
+].filter(Boolean).join(',')
 
 vendorWasm()
 
@@ -121,6 +112,8 @@ run('bridge', process.execPath, ['bridge/server.mjs'], '36', bridgeEnv)
 run('face', process.execPath, ['node_modules/vite/bin/vite.js'], '35', {})
 
 console.log(
-  '\nWhen it says the dev server is ready, open the URL it prints in Chrome,\n' +
-    'clique INICIAR ATLAS e diga "Ei Atlas". Ctrl-C stops everything.\n',
+  '\nAbra ' + (network.codespaceOrigin || 'http://127.0.0.1:' + network.facePort) +
+  '\nClique INICIAR ATLAS e diga "Ei Atlas".\n' +
+  'Mantenha este terminal rodando. Ctrl+C encerra o Atlas.\n' +
+  (network.codespaceOrigin ? 'Codespaces: encaminhe somente a porta ' + network.facePort + ' como Privada.\n' : ''),
 )

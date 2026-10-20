@@ -1,7 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
+import { readFile, mkdtemp, writeFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { getNetworkConfig } from '../scripts/network.mjs'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
 import { WebSocket } from 'ws'
@@ -14,9 +17,9 @@ const cloudOrigin = 'https://' + codespace + '-' + facePort + '.app.github.dev'
 const bridgeBase = 'http://127.0.0.1:' + bridgePort
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
 
-function handshake(origin) {
+function handshake(origin, url = 'ws://127.0.0.1:' + bridgePort) {
   return new Promise(resolve => {
-    const socket = new WebSocket('ws://127.0.0.1:' + bridgePort, { origin, handshakeTimeout: 3000 })
+    const socket = new WebSocket(url, { origin, handshakeTimeout: 3000 })
     const finish = value => {
       clearTimeout(timer)
       if (socket.readyState === WebSocket.OPEN) socket.close()
@@ -45,7 +48,17 @@ test('URL padrão da interface deve alcançar o Codespace por WebSocket seguro',
   runInNewContext(outputText, { exports, __viteEnv: {}, location, window: { location }, URL })
   const bridge = new URL(exports.BRIDGE_WS_URL)
   assert.equal(bridge.protocol, 'wss:', 'Página HTTPS remota precisa de WebSocket seguro')
-  assert.ok(bridge.hostname.endsWith('.app.github.dev'), 'A ponte deve estar no Codespace, não no localhost do visitante')
+  assert.equal(bridge.host, location.host)
+  assert.equal(bridge.pathname, '/atlas-bridge')
+  assert.equal(exports.BRIDGE_HTTP_URL, cloudOrigin + '/atlas-bridge')
+  for (const [origin, override, expected] of [
+    [localOrigin, '', 'ws://127.0.0.1:' + facePort + '/atlas-bridge'],
+    [cloudOrigin, 'wss://custom.example/bridge', 'wss://custom.example/bridge'],
+  ]) {
+    const result = {}, location = new URL(origin)
+    runInNewContext(outputText, { exports: result, __viteEnv: { VITE_BRIDGE_URL: override }, location, window: { location }, URL })
+    assert.equal(result.BRIDGE_WS_URL, expected)
+  }
 })
 
 test('inicialização real e conexões HTTP/WebSocket em ambiente Codespaces simulado', { timeout: 60000 }, async t => {
@@ -60,7 +73,7 @@ test('inicialização real e conexões HTTP/WebSocket em ambiente Codespaces sim
       ATLAS_BRIDGE_PORT: String(bridgePort),
       ATLAS_HOST: '127.0.0.1',
       ATLAS_ALLOW_WRITES: '0',
-      ATLAS_ALLOWED_ORIGINS: '',
+      ATLAS_ALLOWED_ORIGINS: 'https://custom.example',
       ATLAS_ALLOW_NO_ORIGIN: '0',
       ATLAS_MCP_CONFIG: '/tmp/atlas-connectivity-no-mcp.json',
       CODESPACES: 'true',
@@ -126,4 +139,69 @@ test('inicialização real e conexões HTTP/WebSocket em ambiente Codespaces sim
     assert.equal(response.status, 403)
     assert.equal(await handshake('https://untrusted.example'), 403)
   })
+
+  await t.test('proxy Vite entrega health na mesma origem, inclusive com Host do Codespace', async () => {
+    const response = await fetch(localOrigin + '/atlas-bridge/health', {
+      headers: { Origin: cloudOrigin, Host: new URL(cloudOrigin).host },
+    })
+    assert.equal(response.status, 200)
+    assert.equal((await response.json()).provider, 'openai-codex')
+  })
+  await t.test('proxy Vite abre WebSocket para a ponte preservando a origem', async () => {
+    assert.equal(await handshake(cloudOrigin, localOrigin.replace('http:', 'ws:') + '/atlas-bridge'), 'open')
+    assert.equal(await handshake(localOrigin, localOrigin.replace('http:', 'ws:') + '/atlas-bridge'), 'open')
+  })
+  await t.test('proxy Vite também encaminha voz e arquivos de imagem', async () => {
+    const tts = await fetch(localOrigin + '/atlas-bridge/tts', {
+      method: 'POST', headers: { Origin: cloudOrigin, 'content-type': 'application/json' },
+      body: JSON.stringify({ text: 'teste' }),
+    })
+    assert.equal(tts.status, 503) // No premium voice key in CI; no paid call.
+    assert.equal(await tts.text(), 'no elevenlabs key')
+    const dir = await mkdtemp(join(tmpdir(), 'atlas-proxy-'))
+    try {
+      const path = join(dir, 'pixel.png')
+      const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=', 'base64')
+      await writeFile(path, pixel)
+      const response = await fetch(localOrigin + '/atlas-bridge/file?path=' + encodeURIComponent(path))
+      assert.equal(response.status, 200)
+      assert.equal(response.headers.get('content-type'), 'image/png')
+      assert.deepEqual(Buffer.from(await response.arrayBuffer()), pixel)
+    } finally { await rm(dir, { recursive: true, force: true }) }
+  })
+  await t.test('origem extra explícita é preservada mesmo com PORT definido', async () => {
+    assert.equal(await handshake('https://custom.example'), 'open')
+  })
+  await t.test('outros Codespaces, origens falsas e Origin ausente não atravessam o proxy', async () => {
+    const denied = [
+      'https://another-codespace-' + facePort + '.app.github.dev',
+      cloudOrigin + '.untrusted.example',
+      cloudOrigin.replace('https:', 'http:'),
+      cloudOrigin.replace('-' + facePort + '.', '-5198.'),
+      'null', undefined,
+    ]
+    for (const origin of denied) {
+      assert.equal(await handshake(origin, localOrigin.replace('http:', 'ws:') + '/atlas-bridge'), 403, String(origin))
+      if (origin) {
+        const response = await fetch(localOrigin + '/atlas-bridge/health', { headers: { Origin: origin } })
+        assert.equal(response.status, 403, origin)
+      }
+    }
+  })
+  await t.test('Vite aceita somente o Host remoto configurado', async () => {
+    const response = await fetch(localOrigin, { headers: { Host: 'another-codespace-5173.app.github.dev' } })
+    assert.equal(response.status, 403)
+  })
+
+})
+
+test('configuração de rede valida portas e deriva uma origem remota exata', () => {
+  assert.equal(getNetworkConfig({}).codespaceOrigin, undefined)
+  assert.equal(getNetworkConfig({ CODESPACES: 'true', CODESPACE_NAME: 'example' }).codespaceOrigin,
+    'https://example-5173.app.github.dev')
+  assert.throws(() => getNetworkConfig({ PORT: '0' }))
+  assert.throws(() => getNetworkConfig({ ATLAS_BRIDGE_PORT: 'invalid' }))
+  assert.throws(() => getNetworkConfig({ CODESPACES: 'true', CODESPACE_NAME: 'example/evil' }))
+  assert.throws(() => getNetworkConfig({ CODESPACES: 'true', CODESPACE_NAME: 'example',
+    GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: '*.app.github.dev' }))
 })

@@ -417,12 +417,13 @@ export async function renderPage(url, mode, bridgeOrigin) {
   // here — an iframe gets its rules from its own response — so this is the only
   // thing standing between a hostile page and script execution on an origin
   // that is allowed to open the agent socket.
+  const imageSource = bridgeOrigin.startsWith('/') ? "'self'" : bridgeOrigin
   const csp = live
     ? "default-src 'none'; img-src https: http: data: blob:; " +
       "style-src 'unsafe-inline' https: http: data:; font-src https: http: data:; " +
       `media-src https: http: data:; script-src 'nonce-${nonce}'; form-action 'none'; ` +
       "frame-src 'none'; object-src 'none'; base-uri 'none'"
-    : `default-src 'none'; img-src ${bridgeOrigin} data:; ` +
+    : `default-src 'none'; img-src ${imageSource} data:; ` +
       `style-src 'unsafe-inline'; script-src 'nonce-${nonce}'; form-action 'none'; ` +
       "frame-src 'none'; object-src 'none'; base-uri 'none'"
 
@@ -431,7 +432,7 @@ export async function renderPage(url, mode, bridgeOrigin) {
     title: titleOf(page.text),
     headers: {
       'content-type': 'text/html; charset=utf-8',
-      'content-security-policy': csp,
+      'content-security-policy': 'sandbox allow-scripts; ' + csp,
       'x-content-type-options': 'nosniff',
       referrerpolicy: 'no-referrer',
       /**

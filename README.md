@@ -39,6 +39,34 @@ login do tipo ChatGPT e remove `OPENAI_API_KEY` de seu processo filho, evitando
 uma troca involuntária para cobrança por chave. Não copie tokens nem senhas
 para arquivos do projeto. As memórias desta conversa no ChatGPT não são importadas.
 
+## GitHub Codespaces (uso pessoal)
+
+Após atualizar com `git pull --ff-only && npm ci`, faça o login com
+`npm run login -- --device-auth` se ainda não estiver autenticado e execute
+`npm start`. Mantenha esse terminal rodando; Ctrl+C encerra a interface e a ponte.
+
+Na aba **PORTAS**, abra a porta **5173** no navegador, com visibilidade **Privada**.
+O launcher também imprime o endereço HTTPS exato do Codespace atual. Se mudou
+`PORT`, use a porta e o endereço impressos. Não é necessário encaminhar a 8787.
+
+O navegador usa `wss://<endereço-da-interface>/atlas-bridge`; o Vite encaminha
+WebSocket e HTTP para a ponte em `127.0.0.1:8787` (ou `ATLAS_BRIDGE_PORT`).
+Health, voz e mídia usam o mesmo endereço HTTPS, sem autenticar uma segunda porta.
+O cabeçalho Origin é preservado e a ponte permite apenas a origem HTTPS exata
+derivada das variáveis do Codespace, além das origens locais e das explicitamente
+configuradas em `ATLAS_ALLOWED_ORIGINS`. Outros Codespaces não são autorizados.
+Não configure `allowedHosts: true`, curingas de origem ou `rewriteWsOrigin: true`.
+
+Deixe `VITE_BRIDGE_URL` vazio no Codespaces; se tiver um arquivo `.env.local`
+antigo com `ws://localhost:8787`, remova essa configuração e reinicie o Atlas.
+HTTPS/WSS são fornecidos pelo túnel privado do GitHub; os serviços internos
+continuam em HTTP no loopback.
+
+O Chrome iniciado dentro do Codespace é remoto: ele não controla o Chrome do
+seu computador. Microfone/câmera são capturados pelo navegador onde você abre a
+interface. Os testes de CI simulam a origem do Codespaces; não validam o login
+do túnel GitHub, sua conta ChatGPT ou seus dispositivos.
+
 ## Recursos
 
 - Interface React/Three.js, reator, partículas, shaders e áudios originais.
