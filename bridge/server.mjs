@@ -1,5 +1,6 @@
 /** Atlas local bridge: OpenAI Codex app-server + ChatGPT login. */
 import { WebSocketServer } from 'ws'
+import { getNetworkConfig } from '../scripts/network.mjs'
 import { displayServer } from './panels.mjs'
 import { uiServer } from './ui.mjs'
 import { chromeServer } from './chrome.mjs'
@@ -16,7 +17,8 @@ import { renderPage } from './page.mjs'
 const ALLOW_WRITES = process.env.ATLAS_ALLOW_WRITES === '1'
 function elevenKey() { return process.env.ELEVENLABS_API_KEY?.trim() || null }
 const VOICE_ID = process.env.ATLAS_VOICE_ID || 'JBFqnCBsd6RMkjVDRZzb'
-const PORT = Number(process.env.ATLAS_BRIDGE_PORT ?? 8787)
+const network = getNetworkConfig()
+const PORT = network.bridgePort
 
 /**
  * A crash here takes the whole assistant down mid-sentence, and most of what
@@ -49,6 +51,7 @@ const EXTRA_ORIGINS = new Set(
     .map((s) => s.trim().replace(/\/+$/, ''))
     .filter(Boolean),
 )
+if (network.codespaceOrigin) EXTRA_ORIGINS.add(network.codespaceOrigin)
 const ALLOW_NO_ORIGIN = process.env.ATLAS_ALLOW_NO_ORIGIN === '1'
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
@@ -273,6 +276,10 @@ function corsFor(req) {
 const http = await import('node:http')
 
 const handleRequest = async (req, res) => {
+  // Keep the prefix on the Vite proxy so reader images can use relative URLs.
+  const viaProxy = /^\/atlas-bridge(?:\/|$)/.test(req.url ?? '')
+  if (viaProxy) req.url = req.url.slice('/atlas-bridge'.length) || '/'
+
   const origin = req.headers.origin
   if (origin && !originAllowed(origin)) {
     console.warn(`[atlas] refused http request from origin ${origin}`)
@@ -391,7 +398,7 @@ const handleRequest = async (req, res) => {
     const target = asked.searchParams.get('url') ?? ''
     const mode = asked.searchParams.get('mode') === 'live' ? 'live' : 'reader'
     try {
-      const page = await renderPage(target, mode, `http://localhost:${PORT}`)
+      const page = await renderPage(target, mode, viaProxy ? '/atlas-bridge' : `http://localhost:${PORT}`)
       res.writeHead(200, { ...cors, ...page.headers })
       return res.end(page.body)
     } catch (err) {
@@ -595,7 +602,7 @@ const wss = new WebSocketServer({
   // 403 would look like the bridge simply isn't running.
   verifyClient: ({ origin, req }, done) => {
     const path = (req.url ?? '/').split('?')[0]
-    if (path !== '/' && path !== '/ws') {
+    if (!['/', '/ws', '/atlas-bridge', '/atlas-bridge/', '/atlas-bridge/ws'].includes(path)) {
       console.warn(`[atlas] rejected websocket on path ${path}`)
       return done(false, 403, 'Forbidden')
     }

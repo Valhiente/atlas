@@ -1,15 +1,35 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { getNetworkConfig } from './scripts/network.mjs'
+
+const network = getNetworkConfig()
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
     host: '127.0.0.1',
-    // Honour PORT so a second instance can run alongside the first. The bridge
-    // only accepts sockets from localhost:5173-5199, so stay inside that range
-    // or set ATLAS_ALLOWED_ORIGINS to match.
-    port: Number(process.env.PORT) || 5173,
+    port: network.facePort,
+    // An occupied port must not silently change the configured remote origin.
+    strictPort: true,
+    allowedHosts: network.codespaceOrigin ? [new URL(network.codespaceOrigin).hostname] : [],
+    proxy: {
+      '^/atlas-bridge(?:/|$)': {
+        target: 'http://127.0.0.1:' + network.bridgePort,
+        ws: true,
+        // Preserve Origin. The bridge validates HTTP and WebSocket requests.
+        changeOrigin: false,
+        rewriteWsOrigin: false,
+        configure(proxy) {
+          const stripCredentials = (request: import('node:http').ClientRequest) => {
+            request.removeHeader('cookie')
+            request.removeHeader('authorization')
+          }
+          proxy.on('proxyReq', stripCredentials)
+          proxy.on('proxyReqWs', stripCredentials)
+        },
+      },
+    },
   },
   optimizeDeps: {
     // kokoro-js pulls in `phonemizer`, which carries espeak-ng as inline WASM.
