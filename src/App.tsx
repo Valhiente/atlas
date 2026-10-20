@@ -9,7 +9,6 @@ import { useStore } from './store'
 import { startVoice, type Voice, type VoiceMode } from './lib/voice'
 import { createSpeaker, cycleVoice, currentVoiceName } from './lib/tts'
 import * as sfx from './lib/sfx'
-import * as music from './lib/music'
 import * as hands from './lib/hands'
 import { listenForClap } from './lib/clap'
 import * as camera from './lib/camera'
@@ -105,8 +104,6 @@ export default function App() {
     const s = store.getState()
     s.setCaption('')
     s.setActiveTool(null)
-    music.working(false)
-    music.duck(false)
     sfx.duck(false)
     s.setPhase('dormant')
   }
@@ -140,7 +137,6 @@ export default function App() {
     const spk = createSpeaker()
     speaker.current = spk
     sfx.duck(true)
-    music.duck(true)
 
     const turnId = newId()
     let started = false
@@ -156,7 +152,6 @@ export default function App() {
             // The answer arriving is what ends the tool phase — a timer would
             // clear the readout while a slow tool was still running.
             store.getState().setActiveTool(null)
-            music.working(false)
             store.getState().pushTurn({ id: turnId, role: 'atlas', text: '' })
           }
           store.getState().appendToLastTurn(delta)
@@ -171,7 +166,6 @@ export default function App() {
           if (!started) store.getState().setPhase('tooling')
           store.getState().setActiveTool(name)
           sfx.play('tool')
-          music.working(true)
           // Say something the moment work starts — a tool can take ten seconds
           // and silence that long reads as a crash. Once per turn only; a
           // chain of five tools shouldn't produce five apologies.
@@ -208,9 +202,7 @@ export default function App() {
       if (!stale()) {
         speaker.current = null
         sfx.duck(false)
-        music.duck(false)
         store.getState().setActiveTool(null)
-        music.working(false)
         // Stay open. Having to say his name again to add one more sentence is
         // the difference between a conversation and a vending machine.
         listen(FOLLOW_UP_MS)
@@ -282,9 +274,7 @@ export default function App() {
       turn.current++
       interrupt()
       store.getState().setActiveTool(null)
-      music.working(false)
       sfx.duck(false)
-      music.duck(false)
     }
     store.getState().setPhase('listening')
   }
@@ -352,13 +342,6 @@ export default function App() {
     // Must happen inside the click handler — browsers won't start an
     // AudioContext or speech synthesis without a user gesture.
     await sfx.unlockAudio()
-    sfx.play('boot')
-    // The score. Must be started from inside this click handler for the same
-    // reason as the rest of the audio.
-    music.enable()
-    music.playBoot()
-    music.startAmbient()
-
     s.setPhase('boot')
 
     watchServers((servers) => store.getState().setConnected(servers))
@@ -482,11 +465,8 @@ export default function App() {
       }, 200)
     }
 
-    // Long enough for the four-beat start-up sequence in Boot.tsx to play —
-    // status bar, rings, suit schematic, reactor power-up — before the live
-    // interface takes over. Kept a touch under the boot cue so the music is
-    // still rising as the reactor lands.
-    await new Promise((r) => setTimeout(r, 9200)) // boot sequence
+    // A brief brand introduction; actual readiness still waits for the bridge.
+    await new Promise((r) => setTimeout(r, 900))
     await warming
     store.getState().setConnected(connectedLabels())
     store.getState().setVoice(currentVoiceName())

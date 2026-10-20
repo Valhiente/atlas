@@ -3,10 +3,10 @@
 :root {
   /* The interface cyan. `--accent` is re-declared per phase and per panel;
      this one stays put and is what anything neutral pins itself to. */
-  --interface: #00e5ff;
+  --interface: #b4a5ff;
   --accent: var(--interface);
-  --bg: #01060c;
-  font-family: 'Chakra Petch', system-ui, sans-serif;
+  --bg: #0b0b12;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color-scheme: dark;
 }
 
@@ -1908,3 +1908,26 @@ kbd {
 .atlas-controls > div { display:flex; align-items:center; gap:8px; margin-top:8px; }
 .atlas-controls > div span { flex:1; font-size:10px; }
 @media(max-width:600px) { .atlas-controls { bottom:18px; } .atlas-controls > div { flex-wrap:wrap; } }
+
+/* Atlas identity: quiet typography, an orbital mark, and no film HUD scanlines. */
+body::after { background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,.3)); }
+.corner, .rail-right { display: none; }
+.hud { text-transform: none; letter-spacing: .035em; }
+.brand-mark { font-family: inherit; letter-spacing: -.04em; font-weight: 600; }
+.brand-sub { letter-spacing: .05em; text-transform: none; }
+.ignition-word { font-family: inherit; letter-spacing: .12em; }
+.atlas-intro {
+  position: fixed; inset: 0; z-index: 100; display: flex;
+  flex-direction: column; align-items: center; justify-content: center;
+  background: var(--bg); color: #e4ddff; text-align: center; padding: 24px;
+}
+.atlas-intro h1 { font-size: clamp(38px, 9vw, 64px); font-weight: 500; letter-spacing: -.055em; margin: 18px 0 8px; }
+.atlas-intro p { color: #bbb4ce; font-size: 16px; margin: 0; }
+.atlas-intro-note { margin-top: 32px; color: #958cae; font-size: 13px; }
+.atlas-emblem { width: 112px; height: 112px; color: #b4a5ff; }
+.atlas-emblem svg { width: 100%; height: 100%; stroke: currentColor; stroke-width: 1.3; }
+.atlas-emblem-point { fill: currentColor; stroke: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .atlas-emblem { animation: atlas-breathe 2s ease-in-out infinite; }
+}
+@keyframes atlas-breathe { 50% { opacity: .65; transform: scale(.97); } }
