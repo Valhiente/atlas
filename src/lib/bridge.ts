@@ -253,10 +253,13 @@ function connect(): Promise<WebSocket> {
        */
       settle(
         new Error(
-          `Cannot reach the bridge at ${BRIDGE_WS_URL}. Either it is not ` +
-            'running (start it with `npm start`), or this page is on a port it ' +
-            `refuses — it accepts localhost:5173-5199 and 4173-4199, and this ` +
-            `page is on ${location.port || '80'}.`,
+          `Não foi possível conectar ao servidor Atlas em ${BRIDGE_WS_URL}. ` +
+            `Origem desta página: ${location.origin}. ` +
+            'Verifique se npm start está ativo e se essa origem é permitida. ' +
+            (location.hostname.endsWith('.app.github.dev')
+              ? 'No Codespaces, abra o endereço HTTPS da porta da interface como Privada, ' +
+                'entre no GitHub e remova VITE_BRIDGE_URL antigo que aponte para localhost.'
+              : 'Para acesso remoto, use HTTPS com WebSocket seguro e configure a origem exata em ATLAS_ALLOWED_ORIGINS.'),
         ),
       )
     }
@@ -332,23 +335,24 @@ export async function ask(
   // Claim the slot in this same tick. connect() below awaits, and two calls
   // made before it settles would otherwise both sail past the check above.
   let cancelledWhileDialling = false
-  pending = {
-    finish: () => {
+  let slot = {
+    finish: (_fallback?: string) => {
       cancelledWhileDialling = true
     },
   }
+  pending = slot
 
   let ws: WebSocket
   try {
     ws = await connect()
   } catch (err) {
-    pending = null
+    if (pending === slot) pending = null
     throw err
   }
 
   // Barged in on before the socket was even up. Nothing was ever asked.
   if (cancelledWhileDialling) {
-    pending = null
+    if (pending === slot) pending = null
     return { text: '', tools: [] }
   }
 
@@ -362,7 +366,7 @@ export async function ask(
 
     const cleanup = () => {
       done = true
-      pending = null
+      if (pending === slot) pending = null
       clearTimeout(timer)
       ws.removeEventListener('message', onMessage)
       ws.removeEventListener('close', onClose)
@@ -448,7 +452,8 @@ export async function ask(
       fail(new Error('The connection to the bridge failed.'))
     }
 
-    pending = { finish }
+    slot = { finish }
+    pending = slot
     ws.addEventListener('message', onMessage)
     ws.addEventListener('close', onClose)
     ws.addEventListener('error', onError)
