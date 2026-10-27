@@ -154,3 +154,18 @@ Base visual e multimodal derivada de [Jarvis](https://github.com/Valhiente/jarvi
 Copyright e licença MIT originais preservados em `LICENSE`, atribuição em
 `NOTICE.md` e créditos dos áudios em `public/audio/CREDITS.md`.
 A migração substitui integralmente o backend de inteligência anterior.
+# Diagnóstico de conversa
+
+Com `npm start` ativo, abra outro terminal e execute `npm run doctor -- --ask`.
+O comando verifica a interface, o JSON da ponte pelo proxy, o login ChatGPT no
+perfil exclusivo do Atlas e uma resposta real do Codex. O teste de resposta usa
+os limites da sua conta. Nenhum token é exibido. A saúde HTTP da ponte sozinha
+não comprova login nem uma resposta do modelo.
+
+Se faltar login no Codespaces, execute `npm run login -- --device-auth`, conclua
+a autorização no navegador e repita o diagnóstico. Um login de Codex feito fora
+do Atlas pode usar outro perfil; o Atlas usa `~/.atlas/codex` por padrão.
+
+Abra a URL HTTPS do Codespaces exibida pelo inicializador. Se estiver usando
+intencionalmente um proxy HTTPS local, permita apenas sua origem exata com
+`ATLAS_ALLOWED_ORIGINS=https://localhost:5173 npm start`. Não use curingas.

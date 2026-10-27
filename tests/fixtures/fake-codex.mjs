@@ -18,9 +18,13 @@ for await (const line of readline.createInterface({ input: process.stdin })) {
     else if (prompt === 'tool' || prompt === 'camera') {
       pendingTool = id
       send({ id: 900 + turn, method: 'item/tool/call', params: { threadId: 'thread-test', turnId: id, tool: prompt === 'camera' ? 'atlas_eyes_look' : 'atlas_display', arguments: prompt === 'camera' ? {} : { title: 'Teste', html: '<p>Olá</p>' } } })
-    } else if (prompt === 'failure') completed(id, 'failed')
+    } else if (prompt === 'final-only') {
+      send({ method: 'item/completed', params: { threadId: 'thread-test', turnId: id, item: { id: 'final', type: 'agentMessage', text: 'Olá, Carlos.' } } }); completed(id)
+    } else if (prompt === 'empty') completed(id)
+    else if (prompt === 'failure') completed(id, 'failed')
     else {
-      send({ method: 'item/agentMessage/delta', params: { threadId: 'thread-test', turnId: id, delta: prompt } })
+      send({ method: 'item/agentMessage/delta', params: { threadId: 'thread-test', turnId: id, itemId: 'message-' + id, delta: prompt } })
+      send({ method: 'item/completed', params: { threadId: 'thread-test', turnId: id, item: { id: 'message-' + id, type: 'agentMessage', text: prompt } } })
       if (prompt !== 'slow') completed(id)
     }
   } else if (msg.method === 'turn/interrupt') { reply({}); completed(p.turnId, 'interrupted') }

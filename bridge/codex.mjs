@@ -101,10 +101,18 @@ export class CodexSession {
     if (p.turnId && current.turnId && p.turnId !== current.turnId) return
     if (msg.method === 'turn/started') current.turnId = p.turn.id
     if (msg.method === 'item/agentMessage/delta' && !current.cancelled) {
+      current.streamedItems.add(p.itemId)
       current.text += p.delta; current.onText(p.delta)
+    }
+    // Some responses deliver only a completed message, without text deltas.
+    if (msg.method === 'item/completed' && p.item?.type === 'agentMessage' && !current.cancelled &&
+        !current.streamedItems.has(p.item.id) && typeof p.item.text === 'string') {
+      current.streamedItems.add(p.item.id)
+      current.text += p.item.text; current.onText(p.item.text)
     }
     if (msg.method === 'turn/completed' && (!current.turnId || p.turn.id === current.turnId)) {
       if (p.turn.status === 'failed') current.reject(new Error(p.turn.error?.message || 'A resposta do Codex falhou.'))
+      else if (!current.cancelled && !current.text.trim()) current.reject(new Error('O Codex terminou sem resposta em texto. Tente novamente ou execute npm run doctor -- --ask.'))
       else current.resolve(current.text)
       clearTimeout(current.timer); this.current = null
     }
@@ -121,7 +129,7 @@ export class CodexSession {
     done.catch(() => {})
     let started
     const startDone = new Promise(r => { started = r })
-    const current = { text: '', turnId: null, cancelled: false, onText, resolve, reject, done, startDone }
+    const current = { text: '', streamedItems: new Set(), turnId: null, cancelled: false, onText, resolve, reject, done, startDone }
     current.timer = setTimeout(() => { this.fail(new Error('O turno excedeu cinco minutos.')); this.close() }, 300000)
     this.current = current
     try {

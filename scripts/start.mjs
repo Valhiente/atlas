@@ -105,7 +105,7 @@ bridgeEnv.ATLAS_ALLOWED_ORIGINS = [
 
 vendorWasm()
 
-console.log('\nA.T.L.A.S. starting — the brain and the face.\n')
+console.log('\nAtlas iniciando — interface e assistente.\n')
 run('bridge', process.execPath, ['bridge/server.mjs'], '36', bridgeEnv)
 // npm is a shell script on most systems; call the vite binary directly so we do
 // not need shell:true (which would break the argument handling above).
@@ -115,5 +115,6 @@ console.log(
   '\nAbra ' + (network.codespaceOrigin || 'http://127.0.0.1:' + network.facePort) +
   '\nClique INICIAR ATLAS e diga "Ei Atlas".\n' +
   'Mantenha este terminal rodando. Ctrl+C encerra o Atlas.\n' +
+  'Se não responder: em outro terminal execute npm run doctor -- --ask.\n' +
   (network.codespaceOrigin ? 'Codespaces: encaminhe somente a porta ' + network.facePort + ' como Privada.\n' : ''),
 )

@@ -54,3 +54,16 @@ test('ações Chrome e MCP são restritas por padrão', () => {
   assert.equal(allowedExternalTool('send_email'), false)
   assert.equal(allowedExternalTool('send_email', true), true)
 })
+test('mensagem final sem deltas chega ao usuário; resposta vazia produz erro', async t => {
+  const session = new CodexSession({ spawnProcess: spawnFixture() }); t.after(() => session.close())
+  let streamed = ''
+  assert.equal(await session.run('final-only', text => { streamed += text }), 'Olá, Carlos.')
+  assert.equal(streamed, 'Olá, Carlos.')
+  await assert.rejects(session.run('empty'), /sem resposta em texto/)
+})
+test('mensagem final não duplica texto já transmitido', async t => {
+  const session = new CodexSession({ spawnProcess: spawnFixture() }); t.after(() => session.close())
+  let streamed = ''
+  assert.equal(await session.run('Olá', text => { streamed += text }), 'Olá')
+  assert.equal(streamed, 'Olá')
+})
